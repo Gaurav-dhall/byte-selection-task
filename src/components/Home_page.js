@@ -1,59 +1,73 @@
-import { GoogleLogin } from '@react-oauth/google';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import React from 'react';
+
+import React, { useEffect } from "react";
+import { gapi } from "gapi-script";
+import { useNavigate } from "react-router-dom";
+
+const clientId =
+  "609345747653-hgm4ge67j2bjqm5mamc7cf4rrkrf2ckl.apps.googleusercontent.com";
+const apiKey = "AIzaSyCA1LUozEnYaJHWp7_mnilqU1pnw0oBAqE";
+const scope = "https://www.googleapis.com/auth/youtube.readonly";
 
 export const Home_page = () => {
   const navigate = useNavigate();
 
-  const handleLoginSuccess = async (response) => {
-    const token = response.credential;
-    await checkYouTubeSubscription(token);
-  };
-
-  const checkYouTubeSubscription = async (token) => {
-    try {
-      const response = await axios.get("https://www.googleapis.com/youtube/v3/subscriptions", {
-        params: {
-          part: 'snippet',
-          mine: true,
-        },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+  useEffect(() => {
+    const initClient = () => {
+      gapi.client.init({
+        apiKey: apiKey,
+        clientId: clientId,
+        discoveryDocs: [
+          "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest",
+        ],
+        scope: scope,
       });
+    };
+    gapi.load("client:auth2", initClient);
+  }, []);
 
-      const subscription = response.data.items;
-      const isSubscribed = subscription.some(
-        (item) => item.snippet.resourceId.channelId === "UCgIzTPYitha6idOdrr7M8sQ"
+  const checkSubscription = async () => {
+    try {
+      const response = await gapi.client.youtube.subscriptions.list({
+        part: "snippet",
+        mine: true,
+      });
+      const subscriptions = response.result.items;
+      const isSubscribed = subscriptions.some(
+        (item) =>
+          item.snippet.resourceId.channelId === "UCgIzTPYitha6idOdrr7M8sQ"
       );
-
-      if (isSubscribed) {
-        console.log("User is subscribed!");
-        // Redirect to a private page
-        navigate('/private-page'); // Replace with your private page route
-      } else {
-        console.log("User is not subscribed.");
-        // Redirect to unauthorized page
-        navigate('/unauthorized'); // Replace with your unauthorized page route
-      }
+      return isSubscribed;
     } catch (error) {
       console.error("Error checking subscription:", error);
+      return false;
     }
   };
 
+  const handlelogin = () => {
+    const authInstance = gapi.auth2.getAuthInstance();
+    authInstance
+      .signIn()
+      .then(async () => {
+        const isSubscribed = await checkSubscription();
+        if (isSubscribed) {
+          console.log("User is subscribed");
+          navigate("/private"); // Correct usage of navigate
+        } else {
+          console.log("User is not subscribed");
+          navigate("/unauthorized"); // Correct usage of navigate
+        }
+      })
+      .catch((error) => {
+        console.error("Login failed: ", error);
+      });
+  };
+
   return (
-    <>
-      <div>
-        Welcome to the home page. Click on the button below to see the private page (only for logged-in users).
-      </div>
-      <GoogleLogin
-        onSuccess={handleLoginSuccess}
-        onError={() => {
-          console.log('Login Failed');
-        }}
-      />
-    </>
+    <div>
+      <h1>Welcome to the home page!</h1>
+      <p>Click on the button below to login with Google and verify your subscription.</p>
+      <button onClick={handlelogin}>Login with Google</button>
+    </div>
   );
 };
 
