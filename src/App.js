@@ -5,6 +5,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home_page from "./components/Home_page";
 import Unauthorized_page from "./components/Unauthorized_page";
 import Private_page from "./components/Private_page";
+import './index.css';
+// import gIcon from '../assets/g-icon.png';
 
 
 function App() {
